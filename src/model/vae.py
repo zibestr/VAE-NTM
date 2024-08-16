@@ -55,19 +55,19 @@ class VariationalAutoencoder(nn.Module):
             dim = 1
         else:
             dim = 0
-        heta = nn.functional.softmax(z, dim=dim)  # doc-topic distribution
-        return heta.detach()
+        theta = nn.functional.softmax(z, dim=dim)  # doc-topic distribution
+        return theta.detach()
 
-    def words_distribution(self,
-                           X: torch.Tensor,
-                           num_words: int) -> torch.Tensor:
-        topic_props = self.topic_distribution(X)
-        words_props = nn.functional.softmax(
-            self.decoder[0].weight.detach() @ topic_props,
+    def sample_words(self,
+                     X: torch.Tensor,
+                     num_words: int) -> torch.Tensor:
+        topic_probs = self.topic_distribution(X)
+        words_probs = nn.functional.softmax(
+            self.decoder[0].weight.detach() @ topic_probs,
             dim=0
         )
         return torch.multinomial(
-            words_props,
+            words_probs,
             num_words
         )
 

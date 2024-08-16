@@ -12,7 +12,7 @@ class TextNormalizer:
 
     @staticmethod
     def _delete_punctuation(text: str) -> str:
-        text = re.sub(r'[!"#\$%&\'\(\)\*\+,-\.\/:;<=>\?@\[\\\]\^_`\{\|\}~]+',
+        text = re.sub(r'[!"#\$%&\'\(\)\*\+,-\.\/:;<=>\?@\[\\\]\^_`\{\|\}~—–]+',
                       ' ', text)
         return text
 

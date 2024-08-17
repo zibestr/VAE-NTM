@@ -2,8 +2,7 @@
 Basic NTM based on VAE from [article](https://arxiv.org/pdf/2401.15351).
 
 # Model arhicture
- - [Text normalizatio](src/data/normalizer.py#L7);
- - [Text vectorization (BoW)](src/data/bow.py#L9);
+ - [Text normalization](src/data/normalizer.py#L7);
  - [Variational AutoEncoder](src/model/vae.py#L5);
 
 # Model results

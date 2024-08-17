@@ -20,6 +20,8 @@ class VariationalAutoencoder(nn.Module):
 
         self.encoder = nn.Sequential(
             nn.Linear(in_features=input_shape,
+                      out_features=input_shape // 2),
+            nn.Linear(in_features=input_shape // 2,
                       out_features=latent_dim)
         ).to(self.device)
 
@@ -30,9 +32,12 @@ class VariationalAutoencoder(nn.Module):
 
         self.decoder = nn.Sequential(
             nn.Linear(in_features=latent_dim,
+                      out_features=input_shape // 2),
+            nn.Linear(in_features=input_shape // 2,
                       out_features=input_shape),
             nn.Softmax(dim=1)
         ).to(self.device)
+        self.is_fitted = False
 
     def encode(self, X: torch.Tensor) -> tuple[torch.Tensor,
                                                torch.Tensor]:
@@ -49,13 +54,10 @@ class VariationalAutoencoder(nn.Module):
         return z
 
     def topic_distribution(self, X: torch.Tensor) -> torch.Tensor:
+        # X - vectorized texts
         mu, log_var = self.encode(X)
         z = self.reparametize(mu, log_var)
-        if len(X.size()) > 1:
-            dim = 1
-        else:
-            dim = 0
-        theta = nn.functional.softmax(z, dim=dim)  # doc-topic distribution
+        theta = nn.functional.softmax(z, dim=1)  # doc-topic distribution
         return theta.detach()
 
     def sample_words(self,
@@ -63,10 +65,24 @@ class VariationalAutoencoder(nn.Module):
                      num_words: int) -> torch.Tensor:
         topic_probs = self.topic_distribution(X)
         words_probs = nn.functional.softmax(
-            self.decoder[0].weight.detach() @ topic_probs,
-            dim=0
-        )
+            self.decoder[0].weight.detach() @ topic_probs.T,
+            dim=1
+        ).T
         return torch.multinomial(
+            words_probs,
+            num_words
+        )
+
+    def topic_distribution_with_words(self,
+                                      X: torch.Tensor,
+                                      num_words: int) -> tuple[torch.Tensor,
+                                                               torch.Tensor]:
+        topic_probs = self.topic_distribution(X)
+        words_probs = nn.functional.softmax(
+            self.decoder[0].weight.detach() @ topic_probs.T,
+            dim=1
+        ).T
+        return topic_probs, torch.multinomial(
             words_probs,
             num_words
         )

@@ -1,7 +1,8 @@
 from torch.utils.data import Dataset
 import torch
 from typing import Iterable
-from src.data.bow import BagOfWords  # type: ignore
+from src.data.normalizer import TextNormalizer
+from sklearn.feature_extraction.text import TfidfVectorizer  # type: ignore
 
 
 class TextDataset(Dataset):
@@ -9,6 +10,7 @@ class TextDataset(Dataset):
                  texts: Iterable[str],
                  stopwords_path: str,
                  min_df: int = 1,
+                 bigrams: bool = False,
                  device: str = 'auto'):
         if device == 'auto':
             self.device = torch.device(
@@ -19,21 +21,28 @@ class TextDataset(Dataset):
         else:
             self.device = torch.device(device)
 
-        self._bow_transformer = BagOfWords(stopwords_path,
-                                           min_df=min_df)
-        self._bow_transformer.fit(texts)
+        self._normalizer = TextNormalizer(stopwords_path)
+        texts = [' '.join(self._normalizer(text)) for text in texts]
+        self.transformer = TfidfVectorizer(min_df=min_df,
+                                           ngram_range=(1 + bigrams,
+                                                        1 + bigrams))
+        self.transformer.fit(texts)
         self._content = torch.tensor(
-            self._bow_transformer.transform(texts),
+            self.transformer.transform(texts).toarray(),
             dtype=torch.float32,
             device=self.device
         )
 
     @property
     def vocab_size(self) -> int:
-        return len(self._bow_transformer._vocabulary)
+        return len(self.transformer.vocabulary_)
 
     def __len__(self) -> int:
         return len(self._content)
 
-    def __getitem__(self, key: int) -> torch.Tensor:
-        return self._content[key]
+    def __getitem__(self, key: int | list[int]) -> torch.Tensor:
+        if isinstance(key, int):
+            return self._content[key]
+        if len(key) == 1:
+            return self._content[key].reshape(1, -1)
+        return torch.vstack([self._content[k] for k in key])

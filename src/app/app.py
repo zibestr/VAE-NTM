@@ -86,11 +86,32 @@ class Application:
             )
 
         fig.update_layout(height=200 * distributions.shape[0],
-                          width=200 * distributions.shape[1],
-                          title_text="Topics probabilities of docs")
+                          width=150 * distributions.shape[1],
+                          title_text='Topics probabilities of docs')
         return fig
 
-    def get_keywords(self,
+    @staticmethod
+    def _words_charts(distributions: np.ndarray,
+                      words: list[list[str]]) -> go.Figure:
+        fig = make_subplots(cols=1, rows=distributions.shape[0])
+        title = 'Words probabilities '
+        for i, dist in enumerate(distributions):
+            df = pd.DataFrame(data={
+                'word': words[i],
+                'probability': dist
+            })
+            fig.add_trace(
+                go.Bar(x=df['word'], y=df['probability'],
+                       name=title + str(i + 1)),
+                row=i + 1, col=1
+            )
+
+        fig.update_layout(height=200 * distributions.shape[0],
+                          width=100 * distributions.shape[1],
+                          title_text='Words probabilities of docs')
+        return fig
+
+    def sample_words(self,
                      doc_paths: list[str],
                      num_words: int = 5) -> list[str]:
         normalized_texts = self._get_normalized_texts(doc_paths)
@@ -108,18 +129,26 @@ class Application:
         doc_paths: list[str],
         num_words: int = 5,
         return_chart: bool = False
-    ) -> tuple[go.Figure, list[str]] | tuple[np.ndarray, list[str]]:
+    ) -> tuple[go.Figure,
+               go.Figure,
+               list[list[str]]] | tuple[np.ndarray,
+                                        np.ndarray,
+                                        list[list[str]]]:
         normalized_texts = self._get_normalized_texts(doc_paths)
-        distributions, inds = self.topic_model.topic_distribution_with_words(
+        output = self.topic_model.topic_distribution_with_words(
             normalized_texts,
             num_words
         )
-        words = self.organizer.data.transformer.get_feature_names_out()
+        distributions, word_probs, inds = output
+        all_words = self.organizer.data.transformer.get_feature_names_out()
+        words = [all_words[ind].tolist() for ind in inds.cpu().numpy()]
         if return_chart:
             return (self._distribution_charts(distributions.cpu().numpy()),
-                    [words[ind].tolist() for ind in inds.cpu().numpy()])
-        return (distributions,
-                [words[ind].tolist() for ind in inds.cpu().numpy()])
+                    self._words_charts(word_probs.cpu().numpy(), words),
+                    words)
+        return (distributions.cpu().numpy(),
+                word_probs.cpu().numpy(),
+                words)
 
     @staticmethod
     def __set_seed(seed: int):

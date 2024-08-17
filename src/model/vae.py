@@ -73,19 +73,20 @@ class VariationalAutoencoder(nn.Module):
             num_words
         )
 
-    def topic_distribution_with_words(self,
-                                      X: torch.Tensor,
-                                      num_words: int) -> tuple[torch.Tensor,
-                                                               torch.Tensor]:
+    def topic_distribution_with_words(
+        self,
+        X: torch.Tensor,
+        num_words: int
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         topic_probs = self.topic_distribution(X)
         words_probs = nn.functional.softmax(
             self.decoder[0].weight.detach() @ topic_probs.T,
             dim=1
         ).T
-        return topic_probs, torch.multinomial(
-            words_probs,
-            num_words
+        values, indices = words_probs.cpu().sort(
+            dim=1, descending=True
         )
+        return topic_probs, values[:, :num_words], indices[:, :num_words]
 
     def decode(self, z: torch.Tensor) -> torch.Tensor:
         theta = nn.functional.softmax(z, dim=1)
